@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <title>Atoms heatmap</title>
+    <style>
+      #container {
+        display:table;
+      }
+
+      .table-row{
+        display:table-row;
+      }
+      .item{
+        display:table-cell;
+      }
+      .heatmapContainer {
+        border-style: solid;
+        border-width: 3px;
+        width: 400px;
+        height: 4000px;
+      }
+    </style>
+  </head>
+  <body>
+
+    <div id="container">
+    </div>
+
+    <script src="https://code.jquery.com/jquery-1.10.2.js"></script>
+    <script src="heatmap.js"></script>
+    <script>
+    (function() {
+        var heatmaps = {};
+        var url = "http://localhost:8000/names";
+
+        function displayData(data) {
+            var container = document.querySelector('#container');
+
+            // create layout
+            data.forEach (function(e) {
+                if (!(e.name in heatmaps)) {
+                    container.innerHTML += '<div class="item">';
+                    container.innerHTML += '<h2>' + e.name.replace('_', ' ')  + '</h2>';
+                    container.innerHTML += '<div id="' + e.name.replace('.', '') + '" class="heatmapContainer" />';
+                    container.innerHTML += '</div>';
+                }
+            });
+            data.forEach (function(e) {
+                if (!(e.name in heatmaps)) {
+                    console.log("creating heatmap " + e.name);
+                    var heatmap = h337.create({
+                        container: document.querySelector('#container #' +
+                                           e.name.replace('.', '')),
+                        blur: 0,
+                        radius: 1
+                    });
+                    heatmaps[e.name] = h337.create({
+                        container: document.querySelector('#container #' +
+                                           e.name.replace('.', '')),
+                        blur: 0,
+                        radius: 1
+                    });
+                }
+            });
+
+            data.forEach (function(e) {
+                heatmaps[e.name].setData(e.data);
+            });
+        };
+
+        function interpolateData(data) {
+            var res = [];
+            for (var idx in data) {
+                var point = data[idx];
+                for (var i = 0; i < 4; i++) {
+                    for (var j = 0; j < 4; j++) {
+                        res.push({x : point.x * 4 + i, y: point.y * 4 + j, value: point.value});
+                    }
+                }
+            }
+            return res;
+        }
+
+        var period = 10000;
+        function refreshData() {
+            $.getJSON(url, function(data) {
+                var res = [];
+                console.log(data);
+                for (var table in data) {
+                    console.log(table);
+                    var item = {name : table, data: {max: 5, data:
+                        interpolateData(data[table].data)}};
+                    res.push(item);
+
+                    var indexes = {name : table + '_indexes', data: {max: 5, data:
+                        interpolateData(data[table].indexes)}};
+                    res.push(indexes);
+                }
+                displayData(res);
+            });
+        };
+
+        refreshData();
+        setInterval(refreshData, period);
+    })();
+    </script>
+  </body>
+</html>
